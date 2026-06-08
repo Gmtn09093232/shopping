@@ -57,7 +57,9 @@ const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
-
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
 app.get('/api/orders', (req, res) => {
   try {
     const orders = readOrders();
