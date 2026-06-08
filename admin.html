@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketFlow Admin Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #f0f2f5; padding: 2rem; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .dashboard { background: white; border-radius: 24px; padding: 2rem; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+    h1 { margin-bottom: 1.5rem; }
+    input, button { padding: 10px 16px; border-radius: 40px; border: 1px solid #ccc; font-size: 1rem; }
+    button { background: #1f6392; color: white; border: none; cursor: pointer; font-weight: 600; }
+    button:hover { background: #0e4a6e; }
+    .product-card { border: 1px solid #ddd; border-radius: 20px; padding: 1rem; margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+    .product-card img { width: 80px; height: 80px; object-fit: cover; border-radius: 12px; }
+    .edit-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .error { color: red; margin-top: 1rem; }
+    .success { color: green; }
+    hr { margin: 2rem 0; }
+    .add-product { background: #f8f9fa; padding: 1.5rem; border-radius: 20px; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="dashboard">
+    <h1>🛠️ Product Manager</h1>
+    <div id="productList"></div>
+    
+    <hr>
+    <div class="add-product">
+      <h3>➕ Add New Product</h3>
+      <form id="addProductForm" enctype="multipart/form-data">
+        <input type="text" name="name" placeholder="English Name" required><br><br>
+        <input type="text" name="nameAm" placeholder="አማርኛ ስም"><br><br>
+        <input type="number" step="0.01" name="price" placeholder="Price (USD)" required><br><br>
+        <input type="text" name="description" placeholder="Description (English)"><br><br>
+        <input type="text" name="descAm" placeholder="መግለጫ (አማርኛ)"><br><br>
+        <input type="file" name="image" accept="image/*"><br><br>
+        <button type="submit">Add Product</button>
+      </form>
+      <div id="addMessage"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // No login – direct API calls (assumes backend no longer requires auth)
+  async function loadProducts() {
+    try {
+      const res = await fetch('/api/admin/products');
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Failed to load');
+      const products = data.products;
+      const container = document.getElementById('productList');
+      container.innerHTML = '<h3>📦 Existing Products</h3>';
+      products.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.innerHTML = `
+          <img src="${p.image}" onerror="this.src='/uploads/default.jpg'">
+          <div><strong>${p.name}</strong> (${p.nameAm})<br>Price: $${p.price}</div>
+          <div class="edit-form">
+            <input type="number" id="price-${p.id}" step="0.01" placeholder="New price" value="${p.price}">
+            <input type="file" id="img-${p.id}" accept="image/*">
+            <button onclick="updateProduct(${p.id})">Update Price/Image</button>
+            <button onclick="deleteProduct(${p.id})" style="background:#c44536;">Delete</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    } catch (err) {
+      alert('Failed to load products: ' + err.message);
+    }
+  }
+
+  window.updateProduct = async (id) => {
+    const priceInput = document.getElementById(`price-${id}`);
+    const newPrice = priceInput.value;
+    const fileInput = document.getElementById(`img-${id}`);
+    const formData = new FormData();
+    if (newPrice) formData.append('price', newPrice);
+    if (fileInput.files[0]) formData.append('image', fileInput.files[0]);
+    try {
+      const res = await fetch(`/api/admin/products/${id}`, {
+        method: 'PUT',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Product updated!');
+        loadProducts();
+      } else alert('Error: ' + data.error);
+    } catch (err) { alert(err.message); }
+  };
+
+  window.deleteProduct = async (id) => {
+    if (!confirm('Delete this product?')) return;
+    try {
+      const res = await fetch(`/api/admin/products/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        alert('Deleted');
+        loadProducts();
+      } else alert('Error: ' + data.error);
+    } catch (err) { alert(err.message); }
+  };
+
+  document.getElementById('addProductForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    try {
+      const res = await fetch('/api/admin/products', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('addMessage').innerHTML = '<span class="success">✅ Product added!</span>';
+        e.target.reset();
+        loadProducts();
+        setTimeout(() => document.getElementById('addMessage').innerHTML = '', 3000);
+      } else {
+        document.getElementById('addMessage').innerHTML = '<span class="error">Error: ' + data.error + '</span>';
+      }
+    } catch (err) {
+      document.getElementById('addMessage').innerHTML = '<span class="error">' + err.message + '</span>';
+    }
+  };
+
+  // Load products on page load
+  loadProducts();
+</script>
+</body>
+</html>

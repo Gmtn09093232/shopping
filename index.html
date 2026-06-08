@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarketFlow | Ethiopian Products</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #f4f7fc; color: #1a2c3e; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 0 24px; }
+    .header { background: white; box-shadow: 0 8px 20px rgba(0,0,0,0.03); position: sticky; top: 0; z-index: 100; }
+    .navbar { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; flex-wrap: wrap; gap: 16px; }
+    .logo h1 { font-size: 1.8rem; font-weight: 700; background: linear-gradient(135deg, #0f2b3d, #2b6e8f); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .logo span { font-size: 0.8rem; color: #4f7e9e; display: block; }
+    .lang-switch { display: flex; gap: 12px; background: #eef3f8; padding: 6px 14px; border-radius: 60px; }
+    .lang-btn { background: none; border: none; font-weight: 600; cursor: pointer; padding: 6px 12px; border-radius: 40px; color: #2c5a7a; }
+    .lang-btn.active { background: #1f6392; color: white; }
+    .cart-icon { background: #eef3f8; padding: 10px 18px; border-radius: 60px; display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .cart-count { background: #c44536; color: white; border-radius: 40px; padding: 2px 8px; font-weight: 600; }
+    .hero { background: linear-gradient(105deg, #eef4fa 0%, #ffffff 100%); margin: 28px 0 32px; border-radius: 36px; padding: 2rem; }
+    .market-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin: 32px 0 48px; }
+    .products-header { display: flex; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .sort-wrapper { background: white; padding: 5px 16px; border-radius: 80px; display: flex; gap: 12px; align-items: center; }
+    .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.8rem; }
+    .product-card { background: white; border-radius: 28px; overflow: hidden; transition: 0.2s; box-shadow: 0 6px 14px rgba(0,0,0,0.05); }
+    .product-card:hover { transform: translateY(-5px); box-shadow: 0 20px 30px -12px rgba(0,0,0,0.15); }
+    .product-img { width: 100%; height: 170px; object-fit: cover; }
+    .product-info { padding: 1rem; }
+    .product-price { font-weight: 800; font-size: 1.45rem; color: #1f6d46; }
+    .add-to-cart { background: #1f6392; border: none; color: white; padding: 8px 14px; border-radius: 40px; cursor: pointer; font-weight: 600; }
+    .cart-sidebar { background: white; border-radius: 32px; padding: 1.5rem; position: sticky; top: 100px; max-height: 85vh; overflow-y: auto; }
+    .cart-item { border-bottom: 1px solid #ecf3f9; padding: 12px 0; }
+    .qty-controls { background: #f0f6fa; border-radius: 40px; padding: 4px 10px; width: fit-content; display: flex; gap: 8px; align-items: center; }
+    .cart-total { font-weight: 800; font-size: 1.3rem; display: flex; justify-content: space-between; margin: 20px 0; border-top: 2px dashed #cbdde9; padding-top: 16px; }
+    .btn-primary, .btn-secondary { border: none; padding: 12px; border-radius: 60px; font-weight: 600; cursor: pointer; width: 100%; margin-bottom: 10px; }
+    .btn-primary { background: #1b7352; color: white; }
+    .btn-secondary { background: #eef2f8; color: #2c5a7a; }
+    .toast-notification { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e2f3c; color: white; padding: 12px 24px; border-radius: 60px; opacity: 0; transition: 0.3s; pointer-events: none; z-index: 1000; }
+    @media (max-width: 880px) { .market-layout { grid-template-columns: 1fr; } .cart-sidebar { position: static; } }
+  </style>
+</head>
+<body>
+<div class="header"><div class="container"><div class="navbar"><div class="logo"><h1>MarketFlow<span id="logoSub">Ethiopian origin products</span></h1></div><div style="display:flex; gap:12px;"><div class="lang-switch"><button class="lang-btn active" data-lang="en">🇬🇧 English</button><button class="lang-btn" data-lang="am">🇪🇹 አማርኛ</button></div><div class="cart-icon" id="cartIconTrigger"><i class="fas fa-shopping-bag"></i><span class="cart-count" id="cartCountBadge">0</span></div></div></div></div></div>
+<main class="container"><div class="hero"><h2 id="heroTitle">Authentic Ethiopian products & industrial equipment</h2><p id="heroDesc">From wild honey to hardness testers – order directly. Free shipping over $100.</p></div>
+<div class="market-layout"><div><div class="products-header"><h3 id="productSectionTitle"><i class="fas fa-tags"></i> Our products</h3><div class="sort-wrapper"><label id="sortLabel">Sort by price:</label><select id="sortSelect"><option value="default">⭐ Default</option><option value="lowToHigh">💰 Low → High</option><option value="highToLow">💎 High → Low</option></select></div></div><div id="productGridContainer" class="product-grid">Loading products...</div></div>
+<div class="cart-sidebar"><h3 id="cartTitle"><i class="fas fa-clipboard-list"></i> Your order</h3><div id="cartItemsList" class="cart-items"><div class="empty-cart" id="emptyCartMsg">Cart is empty</div></div><div class="cart-total"><span id="totalLabel">Total:</span><span id="cartTotalPrice">$0.00</span></div><button id="placeOrderBtn" class="btn-primary"><i class="fas fa-check-circle"></i> <span id="placeOrderBtnText">Place order</span></button><button id="clearCartBtn" class="btn-secondary"><i class="fas fa-trash-alt"></i> <span id="clearCartBtnText">Clear cart</span></button></div></div></main>
+<footer><p id="footerText">© 2025 MarketFlow — supporting Ethiopian producers & industry</p></footer>
+<div id="toastMsg" class="toast-notification"></div>
+<script>
+  let cart = [], currentLang = "en", currentSort = "default", allProducts = [];
+  const translations = {
+    en: { logoSub:"Ethiopian origin products", heroTitle:"Authentic Ethiopian products & industrial equipment", heroDesc:"From wild honey to hardness testers – order directly. Free shipping over $100.", productSectionTitle:"Our products", sortLabel:"Sort by price:", cartTitle:"Your order", emptyCart:"Cart is empty — add products", totalLabel:"Total:", placeOrderBtn:"Place order", clearCartBtn:"Clear cart", footer:"© 2025 MarketFlow — supporting Ethiopian producers & industry", cartEmptyAlert:"Your cart is empty.", orderSuccess:(i,t)=>`✅ Order placed!\nItems: ${i}\nTotal: $${t.toFixed(2)}`, clearConfirm:"Clear all items?", addToCartAnim:"Added to cart!", orderPlacedToast:(i,t)=>`🎉 Ordered ${i} item(s) · $${t.toFixed(2)}`, cartClearedToast:"Cart cleared" },
+    am: { logoSub:"የኢትዮጵያ ተወላጅ ምርቶች", heroTitle:"እውነተኛ የኢትዮጵያ ምርቶች እና ኢንዱስትሪ መሣሪያዎች", heroDesc:"ከዱር ማር እስከ ጠንካራነት መለኪያ – በቀጥታ ያዝዙ። ከ100 ዶላር በላይ ነጻ መላኪያ።", productSectionTitle:"የእኛ ምርቶች", sortLabel:"በዋጋ ደርድር:", cartTitle:"የእርስዎ ትዕዛዝ", emptyCart:"ጋሪ ባዶ ነው — ምርቶችን ይጨምሩ", totalLabel:"ጠቅላላ:", placeOrderBtn:"ትዕዛዝ አስገባ", clearCartBtn:"ጋሪ አጽዳ", footer:"© 2025 MarketFlow — የኢትዮጵያ አምራቾችን መደገፍ", cartEmptyAlert:"ጋሪዎ ባዶ ነው።", orderSuccess:(i,t)=>`✅ ትዕዛዝ ተመዝግቧል!\nእቃዎች: ${i}\nጠቅላላ: $${t.toFixed(2)}`, clearConfirm:"ሁሉንም እቃዎች ማጽዳት ይፈልጋሉ?", addToCartAnim:"ወደ ጋሪ ተጨመረ!", orderPlacedToast:(i,t)=>`🎉 ትእዛዝ ተላከ! ${i} ዕቃ · $${t.toFixed(2)}`, cartClearedToast:"ጋሪ ጸዳ" }
+  };
+  function showToast(msg) { let t = document.getElementById('toastMsg'); t.innerText = msg; t.style.opacity = '1'; setTimeout(()=> t.style.opacity='0', 2000); }
+  function getProductById(id) { return allProducts.find(p=>p.id===id); }
+  function getProductName(p) { return currentLang==='am' ? p.nameAm : p.name; }
+  function getProductDesc(p) { return currentLang==='am' ? p.descAm : p.description; }
+  function computeTotal() { return cart.reduce((s,i)=> s + getProductById(i.id).price * i.quantity, 0); }
+  function updateBadge() { document.getElementById('cartCountBadge').innerText = cart.reduce((s,i)=> s+i.quantity,0); }
+  function renderCart() { const container = document.getElementById('cartItemsList'); const totalSpan = document.getElementById('cartTotalPrice'); const t = translations[currentLang]; if (!cart.length) { container.innerHTML = `<div class="empty-cart">${t.emptyCart}</div>`; totalSpan.innerText = "$0.00"; updateBadge(); return; } let html = ''; cart.forEach(item => { const p = getProductById(item.id); if(!p) return; html += `<div class="cart-item"><div><strong>${getProductName(p)}</strong> - $${p.price.toFixed(2)}</div><div style="display:flex; justify-content:space-between; margin-top:6px;"><div class="qty-controls"><button class="cart-decr" data-id="${item.id}">−</button><span>${item.quantity}</span><button class="cart-incr" data-id="${item.id}">+</button></div><button class="remove-item" data-id="${item.id}" style="background:none; border:none; color:#c84b31; cursor:pointer;"><i class="fas fa-trash-alt"></i></button></div><div style="font-size:0.75rem; text-align:right;">Line: $${(p.price * item.quantity).toFixed(2)}</div></div>`; }); container.innerHTML = html; totalSpan.innerText = `$${computeTotal().toFixed(2)}`; updateBadge(); }
+  function addToCart(id) { let ex = cart.find(i=>i.id===id); if(ex) ex.quantity++; else cart.push({id, quantity:1}); renderCart(); showToast(translations[currentLang].addToCartAnim); }
+  function adjustQuantity(id, delta) { let idx = cart.findIndex(i=>i.id===id); if(idx===-1) return; let nq = cart[idx].quantity+delta; if(nq<=0) cart.splice(idx,1); else cart[idx].quantity = nq; renderCart(); }
+  function removeItem(id) { cart = cart.filter(i=>i.id!==id); renderCart(); }
+  function clearCart() { if(cart.length && confirm(translations[currentLang].clearConfirm)) { cart=[]; renderCart(); showToast(translations[currentLang].cartClearedToast); } }
+  function placeOrder() { if(!cart.length) { alert(translations[currentLang].cartEmptyAlert); return; } let total=computeTotal(), cnt=cart.reduce((s,i)=>s+i.quantity,0); alert(translations[currentLang].orderSuccess(cnt,total)); showToast(translations[currentLang].orderPlacedToast(cnt,total)); cart=[]; renderCart(); }
+  function getSortedProducts() { const copy = [...allProducts]; if(currentSort==='lowToHigh') copy.sort((a,b)=>a.price-b.price); else if(currentSort==='highToLow') copy.sort((a,b)=>b.price-a.price); else copy.sort((a,b)=>a.id-b.id); return copy; }
+  function renderProductGrid() { const container = document.getElementById('productGridContainer'); const sorted = getSortedProducts(); if (!sorted.length) { container.innerHTML = '<div>Loading products...</div>'; return; } let html = ''; sorted.forEach(p => { html += `<div class="product-card"><img class="product-img" src="${p.image}" onerror="this.src='/uploads/default.jpg'"><div class="product-info"><div class="product-name">${escapeHtml(getProductName(p))}</div><div class="product-desc">${escapeHtml(getProductDesc(p))}</div><div class="price-row"><span class="product-price">$${p.price.toFixed(2)}</span><button class="add-to-cart" data-id="${p.id}"><i class="fas fa-cart-plus"></i> ${currentLang==='am'?'አዝዝ':'Order'}</button></div></div></div>`; }); container.innerHTML = html; }
+  async function fetchProducts() { try { const res = await fetch('/api/products'); const data = await res.json(); if (data.success) { allProducts = data.products; renderProductGrid(); } else console.error('Failed'); } catch(err) { console.error(err); } }
+  function escapeHtml(str) { return str.replace(/[&<>]/g, function(m) { if (m === '&') return '&amp;'; if (m === '<') return '&lt;'; if (m === '>') return '&gt;'; return m; }); }
+  function applyTranslations() { const t = translations[currentLang]; document.getElementById('logoSub').innerText = t.logoSub; document.getElementById('heroTitle').innerText = t.heroTitle; document.getElementById('heroDesc').innerText = t.heroDesc; document.getElementById('productSectionTitle').innerHTML = `<i class="fas fa-tags"></i> ${t.productSectionTitle}`; document.getElementById('sortLabel').innerHTML = t.sortLabel; document.getElementById('cartTitle').innerHTML = `<i class="fas fa-clipboard-list"></i> ${t.cartTitle}`; document.getElementById('totalLabel').innerText = t.totalLabel; document.getElementById('placeOrderBtnText').innerText = t.placeOrderBtn; document.getElementById('clearCartBtnText').innerText = t.clearCartBtn; document.getElementById('footerText').innerText = t.footer; const sortSelect = document.getElementById('sortSelect'); if(currentLang==='am') { sortSelect.options[0].text="⭐ ነባሪ"; sortSelect.options[1].text="💰 ዋጋ ዝቅ→ከፍ"; sortSelect.options[2].text="💎 ዋጋ ከፍ→ዝቅ"; } else { sortSelect.options[0].text="⭐ Default"; sortSelect.options[1].text="💰 Low → High"; sortSelect.options[2].text="💎 High → Low"; } renderProductGrid(); renderCart(); }
+  document.addEventListener('click', (e) => { let add = e.target.closest('.add-to-cart'); if(add && add.dataset.id) addToCart(parseInt(add.dataset.id)); let inc = e.target.closest('.cart-incr'); if(inc && inc.dataset.id) adjustQuantity(parseInt(inc.dataset.id), 1); let dec = e.target.closest('.cart-decr'); if(dec && dec.dataset.id) adjustQuantity(parseInt(dec.dataset.id), -1); let rem = e.target.closest('.remove-item'); if(rem && rem.dataset.id) removeItem(parseInt(rem.dataset.id)); });
+  document.getElementById('sortSelect')?.addEventListener('change', (e)=> { currentSort=e.target.value; renderProductGrid(); });
+  document.getElementById('clearCartBtn')?.addEventListener('click', clearCart); document.getElementById('placeOrderBtn')?.addEventListener('click', placeOrder); document.getElementById('cartIconTrigger')?.addEventListener('click', ()=>document.querySelector('.cart-sidebar')?.scrollIntoView({behavior:'smooth'}));
+  document.querySelectorAll('.lang-btn').forEach(btn => btn.addEventListener('click',()=>{ let lang=btn.getAttribute('data-lang'); if(lang===currentLang) return; currentLang=lang; document.querySelectorAll('.lang-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); applyTranslations(); }));
+  fetchProducts(); applyTranslations();
+</script>
+</body>
+</html>
