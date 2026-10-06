@@ -1,10 +1,29 @@
+
 {
-  "dependencies": {
-    "cors": "^2.8.6",
-    "express": "^5.2.1",
-    "multer": "^2.1.1"
+  "name": "material-testing-laboratory",
+  "version": "1.0.0",
+  "description": "Material Testing Laboratory Report & Analysis Web Application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
   },
-  "devDependencies": {
-    "nodemon": "^3.1.14"
-  }
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "keywords": [
+    "material-testing",
+    "laboratory",
+    "engineering",
+    "report",
+    "utm",
+    "hardness",
+    "impact",
+    "roughness"
+  ],
+  "author": "Material Testing Laboratory",
+  "license": "MIT"
 }
