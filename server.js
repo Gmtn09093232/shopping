@@ -1,181 +1,154 @@
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const cors = require('cors');
-const multer = require('multer');  // <-- NEW: for file uploads
+/* ==========================================================================
+   MATERIAL TESTING LABORATORY — PRODUCTION SERVER
+   --------------------------------------------------------------------------
+   Lightweight Express server that serves the single-page laboratory
+   application. Designed for deployment on Render, Railway, Fly.io, etc.
+   ========================================================================== */
+
+"use strict";
+
+const express = require("express");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
+
+/* ---------- configuration ---------- */
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
+const PUBLIC_DIR = path.join(__dirname, "");
 
-// ---------- Middleware ----------
-app.use(cors());
-app.use(express.json());
-app.use(express.static('public'));
+/* ---------- middleware ---------- */
 
-// ---------- Orders Data (your existing code) ----------
-const DATA_DIR = path.join(__dirname, 'data');
-const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
+/* Parse JSON bodies (future API endpoints) */
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Ensure data directory and orders file exist
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-if (!fs.existsSync(ORDERS_FILE)) {
-  fs.writeFileSync(ORDERS_FILE, JSON.stringify([], null, 2));
+/* Trust the proxy on Render so req.protocol and req.ip are correct */
+app.set("trust proxy", 1);
+
+/* Request logging (simple, no dependency) */
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const ms = Date.now() - start;
+    console.log(
+      `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} ` +
+      `${res.statusCode} — ${ms}ms`
+    );
+  });
+  next();
+});
+
+/* Basic security headers */
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
+
+/* ---------- static assets ---------- */
+app.use(
+  express.static(PUBLIC_DIR, {
+    maxAge: process.env.NODE_ENV === "production" ? "1h" : 0,
+    etag: true,
+    index: false, // we handle "/" manually so we can inject env info
+  })
+);
+
+/* ---------- routes ---------- */
+
+/* Health check — Render uses this to verify the service */
+app.get("/healthz", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "material-testing-laboratory",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+/* Serve the single-page app on "/" */
+app.get("/", (req, res) => {
+  const indexPath = path.join(PUBLIC_DIR, "index.html");
+
+  if (!fs.existsSync(indexPath)) {
+    return res.status(500).send(`
+      <h1>Application not found</h1>
+      <p>Could not find <code>public/index.html</code>.</p>
+      <p>Make sure your single-file HTML app is placed at <code>public/index.html</code>.</p>
+    `);
+  }
+
+  res.setHeader("Cache-Control", "no-cache");
+  res.sendFile(indexPath);
+});
+
+/* SPA fallback — any unknown path returns the app (deep-linking support) */
+app.get("*", (req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "Not found", path: req.path });
+  }
+  res.sendFile(path.join(PUBLIC_DIR, "index.html"));
+});
+
+/* ---------- error handling ---------- */
+app.use((err, req, res, next) => {
+  console.error("Server error:", err);
+  res.status(500).json({
+    error: "Internal server error",
+    message: process.env.NODE_ENV === "production" ? undefined : err.message,
+  });
+});
+
+/* ---------- startup ---------- */
+
+/* Verify the app file exists at startup */
+const appFile = path.join(PUBLIC_DIR, "index.html");
+if (!fs.existsSync(appFile)) {
+  console.warn(
+    "\n⚠️  WARNING: public/index.html not found.\n" +
+    "   Place your single-file HTML app at: " + appFile + "\n"
+  );
+} else {
+  const stats = fs.statSync(appFile);
+  console.log(`✓ Found application file (${(stats.size / 1024).toFixed(1)} KB)`);
 }
 
-const readOrders = () => JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf8'));
-const writeOrders = (orders) => fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2));
+const server = app.listen(PORT, HOST, () => {
+  console.log("");
+  console.log("======================================================");
+  console.log("  MATERIAL TESTING LABORATORY — SERVER RUNNING");
+  console.log("======================================================");
+  console.log(`  Environment : ${process.env.NODE_ENV || "development"}`);
+  console.log(`  Listening   : http://${HOST}:${PORT}`);
+  console.log(`  Public dir  : ${PUBLIC_DIR}`);
+  console.log(`  Health      : http://${HOST}:${PORT}/healthz`);
+  console.log("======================================================");
+  console.log("");
+});
 
-// ---------- Products Data (NEW for admin) ----------
-const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
-const UPLOADS_DIR = path.join(__dirname, 'public/uploads');
-
-if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-
-// Initialize products.json if not exists
-if (!fs.existsSync(PRODUCTS_FILE)) {
-  const defaultProducts = [
-    { id: 1, name: "Punydo Wild Coffee", nameAm: "ፑንዶ የዱር ቡና", price: 28.50, description: "Single-origin wild coffee", descAm: "ከፑንዶ ደን ጥሬ ቡና", image: "/uploads/coffee.jpg" },
-    { id: 2, name: "Gera Estate Honey", nameAm: "ጌራ እርሻ ማር", price: 34.90, description: "Raw organic honey", descAm: "ኦርጋኒክ ማር", image: "/uploads/honey.jpg" }
-  ];
-  fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(defaultProducts, null, 2));
+/* ---------- graceful shutdown (Render sends SIGTERM on redeploy) ---------- */
+function shutdown(signal) {
+  console.log(`\n${signal} received. Shutting down gracefully…`);
+  server.close(() => {
+    console.log("HTTP server closed.");
+    process.exit(0);
+  });
+  setTimeout(() => {
+    console.error("Forcing shutdown after timeout.");
+    process.exit(1);
+  }, 10000);
 }
 
-const readProducts = () => JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8'));
-const writeProducts = (data) => fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(data, null, 2));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
 
-// ---------- Multer Setup for Image Uploads ----------
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, unique + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
-
-// ---------- Your Existing Routes (unchanged) ----------
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
-});
-app.get('/api/orders', (req, res) => {
-  try {
-    const orders = readOrders();
-    res.json({ success: true, orders });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
 });
 
-app.post('/api/orders', (req, res) => {
-  try {
-    const { cart, total, itemsCount, customerInfo } = req.body;
-    if (!cart || !Array.isArray(cart) || total === undefined) {
-      return res.status(400).json({ success: false, error: 'Invalid order data' });
-    }
-    const orders = readOrders();
-    const newOrder = {
-      id: Date.now(),
-      timestamp: new Date().toISOString(),
-      items: cart.map(item => ({
-        productId: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        lineTotal: item.price * item.quantity
-      })),
-      total: total,
-      itemsCount: itemsCount || cart.reduce((sum, i) => sum + i.quantity, 0),
-      customerInfo: customerInfo || null
-    };
-    orders.push(newOrder);
-    writeOrders(orders);
-    res.status(201).json({ success: true, orderId: newOrder.id });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ---------- NEW: Admin Product Management API (no auth, as requested) ----------
-// Get all products (for admin panel)
-app.get('/api/admin/products', (req, res) => {
-  res.json({ success: true, products: readProducts() });
-});
-
-// Add new product with image upload
-app.post('/api/admin/products', upload.single('image'), (req, res) => {
-  try {
-    const { name, nameAm, price, description, descAm } = req.body;
-    const products = readProducts();
-    const newId = products.length ? Math.max(...products.map(p => p.id)) + 1 : 1;
-    let imagePath = '/uploads/default.jpg';
-    if (req.file) imagePath = '/uploads/' + req.file.filename;
-    const newProduct = {
-      id: newId,
-      name,
-      nameAm: nameAm || name,
-      price: parseFloat(price),
-      description,
-      descAm: descAm || description,
-      image: imagePath
-    };
-    products.push(newProduct);
-    writeProducts(products);
-    res.json({ success: true, product: newProduct });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Update product (price and/or image)
-app.put('/api/admin/products/:id', upload.single('image'), (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const { price } = req.body;
-    const products = readProducts();
-    const index = products.findIndex(p => p.id === id);
-    if (index === -1) return res.status(404).json({ success: false, error: 'Product not found' });
-    if (price !== undefined) products[index].price = parseFloat(price);
-    if (req.file) products[index].image = '/uploads/' + req.file.filename;
-    writeProducts(products);
-    res.json({ success: true, product: products[index] });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Delete product
-app.delete('/api/admin/products/:id', (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    let products = readProducts();
-    const newProducts = products.filter(p => p.id !== id);
-    if (newProducts.length === products.length) {
-      return res.status(404).json({ success: false, error: 'Product not found' });
-    }
-    writeProducts(newProducts);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ---------- Serve Admin HTML Page ----------
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-// ---------- Public API for Customer Store (get products) ----------
-app.get('/api/products', (req, res) => {
-  const products = readProducts();
-  res.json({ success: true, products });
-});
-
-// ---------- Start Server ----------
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-  console.log(`📦 Admin panel: http://localhost:${PORT}/admin`);
-  console.log(`🛒 Customer store: http://localhost:${PORT}`);
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception:", err);
 });
